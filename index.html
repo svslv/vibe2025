@@ -86,11 +86,27 @@
     function addItem() {
         const newItemInput = document.getElementById('newItem');
         const newItemText = newItemInput.value.trim();
-
         if (newItemText) {
-            items.push({ id: nextId++, text: newItemText });
-            newItemInput.value = '';
-            renderList();
+            fetch('/add', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ text: newItemText })
+            })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        // Можно добавить элемент в список, вызвав перезагрузку или обновить DOM
+                        // Например, вызвать функцию renderList() для обновления таблицы
+                        console.log('Элемент добавлен, ID:', data.id);
+                        newItemInput.value = '';
+                        // Опционально: перезагрузить страницу или обновить таблицу через дополнительный запрос
+                        window.location.reload();
+                    } else {
+                        alert("Ошибка добавления: " + data.error);
+                    }
+                });
         }
     }
 
