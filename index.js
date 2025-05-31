@@ -82,6 +82,21 @@ async function handleRequest(req, res) {
     }
 }
 
+
+async function addItem(text) {
+  try {
+    const connection = await mysql.createConnection(dbConfig);
+    const query = 'INSERT INTO items (text) VALUES (?)';
+    const [result] = await connection.execute(query, [text]);
+    await connection.end();
+    return result.insertId;
+  } catch (error) {
+    console.error('Error adding item:', error);
+    throw error;
+  }
+}
+
+
 // Create and start server
 const server = http.createServer(handleRequest);
 server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
