@@ -78,6 +78,7 @@
                 <td>${index + 1}</td>
                 <td>${item.text}</td>
                 <button onclick="removeItem(${item.id})">Remove</button>
+                <button onclick="editItem(${item.id})">Edit</button>
             `;
             listBody.appendChild(row);
         });
@@ -129,6 +130,29 @@
                 }
             });
     }
+
+    function editItem(id) {
+        const newText = prompt("Введите новый текст:");
+        if (newText) {
+            fetch('/edit', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ id: id, text: newText })
+            })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        console.log('Элемент изменён, ID:', id);
+                        window.location.reload();
+                    } else {
+                        alert("Ошибка редактирования: " + data.error);
+                    }
+                });
+        }
+    }
+
 </script>
 
 </body>
