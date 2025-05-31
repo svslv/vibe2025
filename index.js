@@ -93,6 +93,23 @@ async function handleRequest(req, res) {
                 res.end(JSON.stringify({ success: false, error: error.message }));
             }
         });
+    } else if (req.method === 'POST' && req.url === '/edit') {
+        let body = '';
+        req.on('data', chunk => {
+            body += chunk;
+        });
+        req.on('end', async () => {
+            try {
+                const { id, text } = JSON.parse(body);
+                if (!id || !text) throw new Error("ID или текст не переданы");
+                await updateItem(id, text);
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ success: true }));
+            } catch (error) {
+                res.writeHead(400, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ success: false, error: error.message }));
+            }
+        });
     } else {
         res.writeHead(404, { 'Content-Type': 'text/plain' });
         res.end('Route not found');
@@ -122,6 +139,19 @@ async function deleteItem(id) {
         return result;
     } catch (error) {
         console.error('Error deleting item:', error);
+        throw error;
+    }
+}
+
+async function updateItem(id, newText) {
+    try {
+        const connection = await mysql.createConnection(dbConfig);
+        const query = 'UPDATE items SET text = ? WHERE id = ?';
+        const [result] = await connection.execute(query, [newText, id]);
+        await connection.end();
+        return result;
+    } catch (error) {
+        console.error('Error updating item:', error);
         throw error;
     }
 }
