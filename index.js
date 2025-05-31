@@ -76,6 +76,23 @@ async function handleRequest(req, res) {
             res.writeHead(500, { 'Content-Type': 'text/plain' });
             res.end('Error loading index.html');
         }
+    } else if (req.method === 'POST' && req.url === '/delete') {
+        let body = '';
+        req.on('data', chunk => {
+            body += chunk;
+        });
+        req.on('end', async () => {
+            try {
+                const { id } = JSON.parse(body);
+                if (!id) throw new Error("ID не передан");
+                await deleteItem(id);
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ success: true }));
+            } catch (error) {
+                res.writeHead(400, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ success: false, error: error.message }));
+            }
+        });
     } else {
         res.writeHead(404, { 'Content-Type': 'text/plain' });
         res.end('Route not found');
@@ -95,6 +112,20 @@ async function addItem(text) {
     throw error;
   }
 }
+
+async function deleteItem(id) {
+    try {
+        const connection = await mysql.createConnection(dbConfig);
+        const query = 'DELETE FROM items WHERE id = ?';
+        const [result] = await connection.execute(query, [id]);
+        await connection.end();
+        return result;
+    } catch (error) {
+        console.error('Error deleting item:', error);
+        throw error;
+    }
+}
+
 
 
 // Create and start server

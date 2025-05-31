@@ -77,7 +77,7 @@
             row.innerHTML = `
                 <td>${index + 1}</td>
                 <td>${item.text}</td>
-                <td><button onclick="removeItem(${index})">Remove</button></td>
+                <button onclick="removeItem(${item.id})">Remove</button>
             `;
             listBody.appendChild(row);
         });
@@ -110,9 +110,24 @@
         }
     }
 
-    function removeItem(index) {
-        items.splice(index, 1);
-        renderList();
+    function removeItem(id) {
+        fetch('/delete', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ id: id })
+        })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    console.log('Элемент удалён, ID:', id);
+                    // Перезагрузите страницу или обновите DOM
+                    window.location.reload();
+                } else {
+                    alert("Ошибка удаления: " + data.error);
+                }
+            });
     }
 </script>
 
