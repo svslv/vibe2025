@@ -1,159 +1,101 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>To-Do List</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-        }
-        #todoList {
-            border-collapse: collapse;
-            width: 70%;
-            margin: 0 auto;
-        }
-        #todoList th, #todoList td {
-            border: 1px solid #ddd;
-            padding: 8px;
-            text-align: left;
-        }
-        #todoList th {
-            background-color: #f0f0f0;
-        }
-        #todoList th:first-child, #todoList th:last-child {
-            width: 5%;
-        }
-        #todoList th:nth-child(2) {
-            width: 90%;
-        }
-        .add-form {
-            margin-top: 20px;
-            width: 70%;
-            margin: 20px auto;
-        }
-        .add-form input[type="text"] {
-            padding: 8px;
-            width: 70%;
-        }
-        .add-form button {
-            padding: 8px;
-            width: 20%;
-        }
-    </style>
+  <meta charset="UTF-8"/>
+  <title>ToDo List</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #fafafa; }
+    #container { max-width: 600px; margin: 30px auto; }
+    table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
+    th, td { border: 1px solid #ccc; padding: 8px; }
+    th { background: #eee; }
+    form { display: flex; }
+    input { flex: 1; padding: 8px; }
+    button { padding: 8px 16px; margin-left: 8px; }
+    #logout { float: right; }
+  </style>
 </head>
 <body>
+  <div id="container">
+    <button id="logout" onclick="location.href='/logout'">Выйти</button>
+    <h2>ToDo List</h2>
+    <table>
+      <thead>
+        <tr><th>ID</th><th>Задача</th><th>Действия</th></tr>
+      </thead>
+      <tbody id="list"></tbody>
+    </table>
+    <form onsubmit="addItem(event)">
+      <input id="newText" placeholder="Новая задача" required />
+      <button type="submit">Добавить</button>
+    </form>
+  </div>
 
-<h2 style="text-align: center;">To-Do List</h2>
+  <script>
+    // Обёртка fetch с куки и проверкой 401
+    async function apiFetch(url, opts = {}) {
+      opts.credentials = 'include';
+      const res = await fetch(url, opts);
+      if (res.status === 401) {
+        return window.location = '/login.html';
+      }
+      return res;
+    }
 
-<table id="todoList">
-    <thead>
+    // Загрузка и отображение списка
+    async function loadList() {
+      const res = await apiFetch('/api/items');
+      const items = await res.json();
+      document.getElementById('list').innerHTML = items.map(i => `
         <tr>
-            <th>Number</th>
-            <th>Text</th>
-            <th>Action</th>
+          <td>${i.id}</td>
+          <td>${i.text}</td>
+          <td>
+            <button onclick="deleteItem(${i.id})">❌</button>
+            <button onclick="editItem(${i.id}, '${i.text.replace(/'/g,"\\'")}')">✏️</button>
+          </td>
         </tr>
-    </thead>
-    <tbody id="listBody">
-        {{rows}}
-    </tbody>
-</table>
-
-<div class="add-form">
-    <input type="text" id="newItem" placeholder="Enter new item">
-    <button onclick="addItem()">Add</button>
-</div>
-
-<script>
-    let items = [];
-    let nextId = 1;
-
-    function renderList() {
-        const listBody = document.getElementById('listBody');
-        listBody.innerHTML = '';
-
-        items.forEach((item, index) => {
-            const row = document.createElement('tr');
-            row.innerHTML = `
-                <td>${index + 1}</td>
-                <td>${item.text}</td>
-                <button onclick="removeItem(${item.id})">Remove</button>
-                <button onclick="editItem(${item.id})">Edit</button>
-            `;
-            listBody.appendChild(row);
-        });
+      `).join('');
     }
 
-    function addItem() {
-        const newItemInput = document.getElementById('newItem');
-        const newItemText = newItemInput.value.trim();
-        if (newItemText) {
-            fetch('/add', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ text: newItemText })
-            })
-                .then(res => res.json())
-                .then(data => {
-                    if (data.success) {
-                        // Можно добавить элемент в список, вызвав перезагрузку или обновить DOM
-                        // Например, вызвать функцию renderList() для обновления таблицы
-                        console.log('Элемент добавлен, ID:', data.id);
-                        newItemInput.value = '';
-                        // Опционально: перезагрузить страницу или обновить таблицу через дополнительный запрос
-                        window.location.reload();
-                    } else {
-                        alert("Ошибка добавления: " + data.error);
-                    }
-                });
-        }
+    // Добавить
+    async function addItem(e) {
+      e.preventDefault();
+      const text = document.getElementById('newText').value;
+      await apiFetch('/api/add', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ text })
+      });
+      document.getElementById('newText').value = '';
+      loadList();
     }
 
-    function removeItem(id) {
-        fetch('/delete', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ id: id })
-        })
-            .then(res => res.json())
-            .then(data => {
-                if (data.success) {
-                    console.log('Элемент удалён, ID:', id);
-                    // Перезагрузите страницу или обновите DOM
-                    window.location.reload();
-                } else {
-                    alert("Ошибка удаления: " + data.error);
-                }
-            });
+    // Удалить
+    async function deleteItem(id) {
+      if (!confirm('Удалить задачу #' + id + '?')) return;
+      await apiFetch('/api/delete', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ id })
+      });
+      loadList();
     }
 
-    function editItem(id) {
-        const newText = prompt("Введите новый текст:");
-        if (newText) {
-            fetch('/edit', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ id: id, text: newText })
-            })
-                .then(res => res.json())
-                .then(data => {
-                    if (data.success) {
-                        console.log('Элемент изменён, ID:', id);
-                        window.location.reload();
-                    } else {
-                        alert("Ошибка редактирования: " + data.error);
-                    }
-                });
-        }
+    // Редактировать
+    async function editItem(id, oldText) {
+      const text = prompt('Новый текст для #' + id, oldText);
+      if (text == null) return;
+      await apiFetch('/api/edit', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ id, text })
+      });
+      loadList();
     }
 
-</script>
-
+    // Инициализация
+    window.onload = loadList;
+  </script>
 </body>
 </html>
